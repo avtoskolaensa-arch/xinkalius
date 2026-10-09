@@ -1,0 +1,5 @@
+import {getDb} from "@/db";
+import {productInput} from "@/lib/order-validation";
+import {currentOwner,apiError,fail,sameOrigin,readBody} from "@/lib/server";
+export const dynamic="force-dynamic";
+export async function PATCH(request:Request,context:{params:Promise<{id:string}>}){const owner=await currentOwner();if(!owner)return fail("შესვლა აუცილებელია.",401);if(!sameOrigin(request))return fail("მოთხოვნა ვერ დადასტურდა.",403);let parsed;try{parsed=productInput.safeParse(await readBody(request));}catch{return fail("მონაცემები არასწორია.");}if(!parsed.success)return fail(parsed.error.issues[0].message);const p=parsed.data,{id}=await context.params;try{const r=await getDb().prepare("UPDATE products SET name=?,description=?,ingredients=?,allergens=?,category=?,price=?,cost=?,image=?,available=?,min_quantity=?,updated_at=? WHERE id=? AND owner_id=?").bind(p.name,p.description,p.ingredients,p.allergens,p.category,p.price,p.cost,p.image,Number(p.available),p.minQuantity,Date.now(),id,owner).run();if(!r.meta.changes)return fail("პროდუქტი ვერ მოიძებნა.",404);return Response.json({id});}catch(e){return apiError(e);}}

@@ -1,0 +1,6 @@
+import {getDb} from "@/db";
+import {productInput} from "@/lib/order-validation";
+import {currentOwner,getCatalog,apiError,fail,sameOrigin,readBody,ensureStore} from "@/lib/server";
+export const dynamic="force-dynamic";
+export async function GET(){const owner=await currentOwner();if(!owner)return fail("შესვლა აუცილებელია.",401);try{return Response.json(await getCatalog(owner,true),{headers:{"Cache-Control":"no-store"}});}catch(e){return apiError(e);}}
+export async function POST(request:Request){const owner=await currentOwner();if(!owner)return fail("შესვლა აუცილებელია.",401);if(!sameOrigin(request))return fail("მოთხოვნა ვერ დადასტურდა.",403);let parsed;try{parsed=productInput.safeParse(await readBody(request));}catch{return fail("მონაცემები არასწორია.");}if(!parsed.success)return fail(parsed.error.issues[0].message);const p=parsed.data;try{await ensureStore(owner);const id=crypto.randomUUID();await getDb().prepare("INSERT INTO products (id,owner_id,name,description,ingredients,allergens,category,price,cost,image,available,min_quantity,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,owner,p.name,p.description,p.ingredients,p.allergens,p.category,p.price,p.cost,p.image,Number(p.available),p.minQuantity,Date.now()).run();return Response.json({id},{status:201});}catch(e){return apiError(e);}}

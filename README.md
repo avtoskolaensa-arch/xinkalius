@@ -1,55 +1,57 @@
 # ხინკალიუსი / XINKALIUSI
 
-Private, pre-launch prototype for a khinkali takeaway and delivery kitchen in Batumi.
+Owner-private, pre-launch ordering prototype for a Batumi khinkali kitchen.
 
-## What works
+## Implemented
 
-- Georgian mobile-first menu, category selection, quantities and draft cart.
-- Delivery or pickup, validated name/Georgian mobile/address inputs.
-- Server-calculated integer-tetri totals; the client cannot set prices.
-- Durable D1 test orders with idempotency keys to prevent duplicate submissions.
-- Protected kitchen screen at `/admin`, polling every ten seconds and updating fulfillment stages.
-- Per-user order isolation for the owner-private demonstration.
-- Original transparent raster logo concept and explicitly illustrative food imagery.
+- Aqua/cream/red responsive storefront using the approved Georgian wordmark artwork.
+- Batumi hero (Alphabet Tower, Ferris wheel, Ali and Nino), lightweight WebP assets and a reduced-motion-aware blink.
+- D1-backed product management: photo upload, name, category, ingredients/allergens, unit price/cost, minimum quantity, availability.
+- R2 uploads with authenticated owner checks and PNG/JPEG/WebP validation.
+- Shared catalog used by storefront and walk-in POS; price and availability validated again server-side.
+- Guest-shaped checkout form for delivery/pickup, cash-due test orders, persistent draft and request key.
+- Durable order history at `/orders`; reload does not remove saved orders.
+- Kitchen queue at `/admin`, polling, optional sound, fulfillment and payment states tracked separately.
+- Quick till at `/admin/pos`: optional customer name, cash/terminal records, change, and kitchen submission.
+- Daily order counts plus cash/terminal totals by actual collection timestamp (Asia/Tbilisi).
+- Settings: acceptance pause, daily opening hours, preparation/travel estimates, delivery fee/minimum order, contact information.
+- Server-calculated integer-tetri prices; order price and cost snapshots retained. Customer responses redact costs.
+- Idempotent submissions, guarded payment/fulfillment updates, cross-owner isolation, and same-origin writes.
+- Existing WebMCP cart-staging tool preserved; it never submits orders or payments.
 
-## Current limitations
+## Access and launch boundary
 
-This is a demonstration, **not a launched food business or a live payment system**. The entire site must remain owner-private until production authorization is implemented. All prices, ingredients, delivery fees and product imagery are examples. Real orders and card charges are unavailable. Payment status always remains `demo_unpaid`; no simulated order is labelled paid.
+This is NOT a live restaurant checkout. The whole Site must remain owner-private.
+The current ChatGPT sign-in scopes each user's demo data; it is not production restaurant staff authorization or public guest access. Every admin API checks that identity. Do not simply make the Site public.
 
-`/admin` and the API currently isolate test data by the signed-in ChatGPT user. Before enabling public ordering, replace this demo ownership model with an explicit staff allowlist/roles and a public customer checkout with order-specific access. Merely making the Site public does not complete that change.
+All menu samples, costs, prices, ingredient/allergen text, photos, delivery fees and time estimates are illustrative. Initial sample records are created once per owner at runtime, separate from schema migrations. Replace them with real business data before launch.
 
-## Before taking real orders
+Cash and external-terminal statuses are test bookkeeping only: no payment is processed and no fiscal receipt is issued. Online card/wallet/bank payments are intentionally unavailable, and are never labelled successful. Collected orders cannot currently be cancelled: actual refunds are not implemented. Old `demo_unpaid` records may be cancelled but cannot be completed as paid.
 
-1. Finalize recipes, allergen statements, per-piece prices, minimum quantities, kitchen address, phone, opening hours, delivery coverage/fees and realistic preparation capacity.
-2. Select the business's bank and obtain approved merchant access through its secure process. Keep secrets server-side and out of source control.
-3. Integrate TBC Checkout or Bank of Georgia hosted checkout. Persist an unpaid order before creating the payment, validate signed callbacks or perform an authenticated payment-status lookup, compare amount/currency/order identity, and make updates idempotent. Browser redirects alone do not prove payment.
-4. Test success, failure, abandoned payment, duplicate callback, refund and payment-to-kitchen behavior in the bank's supported test environment. Only verified paid orders should enter paid fulfillment.
-5. Finalize delivery, cancellation/refund and privacy terms using the business's actual details. Configure the real domain and publish only after the launch checks.
+Photos live in R2, product/order/settings records in D1, code/assets/migrations in Git. A code backup alone does not back up the database or uploaded photos.
 
-Official payment references:
-- https://developers.tbcbank.ge/docs/checkout-overview
-- https://api.bog.ge/docs/payments/introduction
+## Still needed before public launch
 
-## Development
+1. Final menu/recipes/allergens/photos, costs/prices/minimums, address, phone, opening hours and realistic kitchen capacity.
+2. Courier arrangements, delivery service area validation and final delivery/packaging fees.
+3. Explicit staff allowlist/roles plus public guest checkout with private order-specific access; phone verification, SMS status/recovery and a provider.
+4. Bank merchant agreement and sandbox credentials; integrate verified server callbacks, abandonment/retry/refund handling. Never treat a browser return as proof of payment. `/callback` belongs to platform sign-in; use a separate bank path.
+5. Refund/cancellation/privacy/delivery terms, real domain, data backup/export and monitoring.
+6. Bank tests and authenticated device/browser walkthrough before opening to real customers.
 
-The project uses React, Vinext, TypeScript, Tailwind and Cloudflare D1. Preserve the pnpm lockfile.
+Ingredient-level stock, loyalty, promotions, scheduled slots, live courier GPS, automatic bank-terminal integration and fiscal cash-register integration are not implemented.
+
+## Development and verification
+
+React + TypeScript + Vinext/Vite, Cloudflare Workers, D1, R2, Drizzle migrations. Preserve the pnpm lockfile.
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm build
 pnpm db:generate
+pnpm build
 ```
 
-The managed Sites runtime uses its supervised preview and provided install/build helpers. Local D1 migrations use the generated `dist/server/wrangler.json`; production migrations are applied by Sites before deployment. Do not rewrite migrations after deployment.
+Use the managed Sites install/build/preview helpers in its managed environment. Schema changes use appended Drizzle migrations; never alter an applied migration.
 
-Product content and sample prices: `lib/menu.ts`.
-Order validation and transitions: `lib/order-validation.ts`.
-Database schema: `db/schema.ts`.
-Brand assets: `public/brand-logo.png` and `public/khinkali.png`.
-
-The logo is a raster concept, not a production vector master. Both image assets were generated with the built-in image tool, with final briefs for a red/ink Georgian logo and illustrative khinkali food photography. Replace the food image with actual product photography before launch.
-
-## Agent assistance
-
-The menu exposes `set_khinkali_cart` only in browsers supporting WebMCP. It stages a cart and never submits an order or takes payment. Its absence does not affect normal ordering. WebMCP runtime QA was unavailable in this authoring environment.
+Validation for this version: TypeScript; pure pricing/minimum/availability/hours/input checks; independent SQL/migration/idempotency review. The browser checked desktop/mobile rendering and cart/pickup calculations with an isolated fixture. That temporary fixture was removed before build. Authenticated end-to-end production checkout and bank/SMS tests remain pending.

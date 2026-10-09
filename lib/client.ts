@@ -1,0 +1,6 @@
+"use client";
+import {useCallback,useEffect,useState} from "react";
+import {type Product,type Settings} from "./menu";
+export async function api<T>(url:string,options?:RequestInit):Promise<T>{const r=await fetch(url,{...options,cache:"no-store",headers:{...(options?.body&&typeof options.body==="string"?{"Content-Type":"application/json"}:{}),...options?.headers}});let data:unknown;try{data=await r.json();}catch{throw new Error("კავშირი ვერ დამყარდა. სცადე ხელახლა.");}if(!r.ok)throw new Error((data as {error?:string})?.error||"მოქმედება ვერ შესრულდა.");return data as T;}
+export function useCatalog(admin=false){const[data,setData]=useState<{products:Product[];settings:Settings}|null>(null),[error,setError]=useState("");const load=useCallback(async()=>{try{const next=await api<{products:Product[];settings:Settings}>(admin?"/api/admin/products":"/api/catalog");setData(next);setError("");return next;}catch(e){setError((e as Error).message);return null;}},[admin]);useEffect(()=>{void load();const f=()=>{void load();};window.addEventListener("focus",f);const t=admin?undefined:setInterval(f,30000);return()=>{window.removeEventListener("focus",f);if(t)clearInterval(t);};},[load,admin]);return{data,error,load};}
+export function productPayload(p:Product){const{id,updatedAt,...v}=p;void id;void updatedAt;return{...v,cost:p.cost??0};}

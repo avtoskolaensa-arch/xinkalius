@@ -1,20 +1,22 @@
-import { getDb } from "@/db";
-import { transitions } from "@/lib/order-validation";
-import { currentOwner,sameOrigin,publicOrder,apiError } from "@/lib/server";
+import {getDb} from "@/db";
+import {transitions} from "@/lib/order-validation";
+import {currentOwner,apiError,fail,sameOrigin,readBody,publicOrder} from "@/lib/server";
 export const dynamic="force-dynamic";
+export async function GET(request:Request,context:{params:Promise<{id:string}>}){void request;const owner=await currentOwner();if(!owner)return fail("შესვლა აუცილებელია.",401);try{const{id}=await context.params;const r=await getDb().prepare("SELECT * FROM orders WHERE id=? AND owner_id=?").bind(id,owner).first();if(!r)return fail("შეკვეთა ვერ მოიძებნა.",404);return Response.json({order:publicOrder(r)},{headers:{"Cache-Control":"no-store"}});}catch(e){return apiError(e);}}
 export async function PATCH(request:Request,context:{params:Promise<{id:string}>}){
-  const owner=await currentOwner();if(!owner)return Response.json({error:"შესვლა აუცილებელია."},{status:401});
-  if(!sameOrigin(request))return Response.json({error:"მოთხოვნა ვერ დადასტურდა."},{status:403});
-  let body:{status?:unknown};try{body=await request.json();}catch{return Response.json({error:"მონაცემები არასწორია."},{status:400});}
-  if(typeof body.status!=="string"||!Object.hasOwn(transitions,body.status))return Response.json({error:"სტატუსი არასწორია."},{status:400});
-  const{id}=await context.params;
-  try{
-    const db=getDb(),order=await db.prepare("SELECT * FROM orders WHERE id = ? AND owner_id = ?").bind(id,owner).first();
-    if(!order)return Response.json({error:"შეკვეთა ვერ მოიძებნა."},{status:404});
-    if(!transitions[String(order.status)]?.includes(body.status)||(order.fulfillment==="pickup"&&body.status==="delivering"))return Response.json({error:"სტატუსი უკვე შეიცვალა. განაახლე გვერდი."},{status:409});
-    const result=await db.prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND owner_id = ? AND status = ?").bind(body.status,Date.now(),id,owner,order.status).run();
-    if(!result.meta.changes)return Response.json({error:"შეკვეთა შეიცვალა. განაახლე გვერდი."},{status:409});
-    const updated=await db.prepare("SELECT * FROM orders WHERE id = ? AND owner_id = ?").bind(id,owner).first();
-    return Response.json({order:publicOrder(updated!)});
-  }catch(error){return apiError(error);}
+ const owner=await currentOwner();if(!owner)return fail("შესვლა აუცილებელია.",401);if(!sameOrigin(request))return fail("მოთხოვნა ვერ დადასტურდა.",403);let b;try{b=await readBody(request,1500);}catch{return fail("მონაცემები არასწორია.");}
+ if(!b||typeof b!=="object"||Array.isArray(b))return fail("მონაცემები არასწორია.");
+ const{id}=await context.params;try{const db=getDb();const o=await db.prepare("SELECT * FROM orders WHERE id=? AND owner_id=?").bind(id,owner).first();if(!o)return fail("შეკვეთა ვერ მოიძებნა.",404);
+  let result;if(b.action==="collect"){
+   if(o.status==="cancelled"||!["cash_due","terminal_due"].includes(String(o.payment_status)))return fail("გადახდის მდგომარეობა უკვე შეიცვალა.",409);
+   const cash=o.payment_method==="cash";if(cash&&(!Number.isInteger(b.cashReceived)||b.cashReceived<Number(o.total)||b.cashReceived>10000000))return fail("მიღებული თანხა ჯამზე ნაკლებია ან არასწორია.");
+   result=await db.prepare("UPDATE orders SET payment_status=?,cash_received=?,updated_at=?,payment_collected_at=? WHERE id=? AND owner_id=? AND payment_status=? AND status=?").bind(cash?"cash_collected":"terminal_collected",cash?b.cashReceived:null,Date.now(),Date.now(),id,owner,o.payment_status,o.status).run();
+  }else if(b.action==="status"){
+   if(typeof b.status!=="string"||!transitions[String(o.status)]?.includes(b.status)||(o.fulfillment==="pickup"&&b.status==="delivering")||(o.fulfillment==="delivery"&&o.status==="ready"&&b.status==="completed"))return fail("სტატუსის ცვლილება დაუშვებელია. განაახლე სია.",409);
+   if(b.status==="completed"&&!["cash_collected","terminal_collected"].includes(String(o.payment_status)))return fail("დასრულებამდე დაადასტურე თანხის მიღება.",409);
+   if(b.status==="cancelled"&&["cash_collected","terminal_collected"].includes(String(o.payment_status)))return fail("თანხა უკვე აღრიცხულია. დაბრუნების ფუნქცია ჯერ არ არის ჩართული.",409);
+   result=await db.prepare("UPDATE orders SET status=?,updated_at=? WHERE id=? AND owner_id=? AND status=? AND payment_status=?").bind(b.status,Date.now(),id,owner,o.status,o.payment_status).run();
+  }else return fail("მოქმედება არასწორია.");
+  if(!result.meta.changes)return fail("შეკვეთა სხვა ფანჯარაში შეიცვალა. განაახლე.",409);const updated=await db.prepare("SELECT * FROM orders WHERE id=? AND owner_id=?").bind(id,owner).first();return Response.json({order:publicOrder(updated!,true)});
+ }catch(e){return apiError(e);}
 }

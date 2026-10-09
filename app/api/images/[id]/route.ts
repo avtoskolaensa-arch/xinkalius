@@ -1,0 +1,4 @@
+import {env} from "cloudflare:workers";
+import {currentOwner,fail,apiError} from "@/lib/server";
+export const dynamic="force-dynamic";
+export async function GET(request:Request,context:{params:Promise<{id:string}>}){void request;const owner=await currentOwner();if(!owner)return fail("შესვლა აუცილებელია.",401);const{id}=await context.params;if(!/^[0-9a-f-]{36}$/.test(id))return fail("ფოტო ვერ მოიძებნა.",404);try{if(!env.BUCKET)throw new Error("BUCKET unavailable");const obj=await env.BUCKET.get(`products/${id}`);if(!obj||obj.customMetadata?.owner!==owner)return fail("ფოტო ვერ მოიძებნა.",404);return new Response(obj.body,{headers:{"Content-Type":obj.httpMetadata?.contentType||"application/octet-stream","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});}catch(e){return apiError(e);}}
