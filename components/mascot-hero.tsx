@@ -4,8 +4,9 @@ import {useEffect, useId, useRef, useState} from "react";
 import {MapPin, Pause, Play} from "lucide-react";
 
 // Eye apertures are measured on the unchanged 2172 × 724 hero artwork.
+// The outer curve covers the entire original iris when the pupil looks left.
 const EYES = [
-  {path: "M1523 292C1544 280 1576 264 1596 257C1600 276 1591 296 1571 306C1552 316 1534 309 1523 292Z", x:1583, y:271},
+  {path: "M1523 292C1544 280 1576 264 1596 257C1600 266 1602 277 1595 285C1589 295 1581 302 1571 306C1552 316 1534 309 1523 292Z", x:1583, y:271},
   {path: "M1615 248C1636 233 1660 223 1684 219C1689 236 1682 254 1664 265C1644 279 1625 268 1615 248Z", x:1669, y:233},
 ];
 
