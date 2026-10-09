@@ -7,5 +7,5 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {
-  return <html lang="ka"><body>{children}</body></html>;
+  return <html lang="ka"><head><link rel="preload" href="/fonts/bpg-nino-mtavruli-bold.woff" as="font" type="font/woff" crossOrigin="anonymous"/><link rel="preload" href="/fonts/3d-unicode.woff" as="font" type="font/woff" crossOrigin="anonymous"/></head><body>{children}</body></html>;
 }
