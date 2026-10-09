@@ -6,7 +6,7 @@ Owner-private, pre-launch ordering prototype for a Batumi khinkali kitchen.
 
 - Aqua/cream/red responsive storefront using the approved Georgian wordmark artwork.
 - Batumi hero (Alphabet Tower, Ferris wheel, Ali and Nino), lightweight WebP assets and a reduced-motion-aware blink.
-- Interactive mascot: a short 16-pose khinkali-and-beer scene on tap, thumbs-up on visible cart additions, gentle steam and a motion-off control. About 577 KB of additional WebP artwork loads only on interaction. Timers and decorative motion pause offscreen/in hidden tabs; reduced-motion preference is respected. This is an illustrated sprite prototype, not continuous filmed/rigged 3D motion.
+- Original static mascot with only gentle left/right eye glances and brief blinking. Small inline SVG eye layers use CSS transforms; no sprite story, cart reaction, video or per-frame React updates. Motion pauses offscreen/in hidden tabs, respects reduced-motion preferences, and can be disabled.
 - D1-backed product management: photo upload, name, category, ingredients/allergens, unit price/cost, minimum quantity, availability.
 - R2 uploads with authenticated owner checks and PNG/JPEG/WebP validation.
 - Shared catalog used by storefront and walk-in POS; price and availability validated again server-side.
