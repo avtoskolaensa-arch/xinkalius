@@ -30,7 +30,7 @@ export const SUMMARY_SQL = `${SALES} SELECT ${METRICS}, COALESCE(SUM(units),0) A
  COALESCE(SUM(CASE WHEN fulfillment='pickup' THEN 1 ELSE 0 END),0) AS pickupOrders,
  COALESCE(SUM(CASE WHEN fulfillment='delivery' THEN 1 ELSE 0 END),0) AS deliveryOrders
  FROM sales`;
-export const SERIES_SQL = `${SALES} SELECT strftime(?,payment_collected_at/1000,'unixepoch','+4 hours') AS key, ${METRICS} FROM sales GROUP BY key ORDER BY key`;
+export const SERIES_SQL = `${SALES} SELECT strftime(?,payment_collected_at/1000,'unixepoch',?) AS key, ${METRICS} FROM sales GROUP BY key ORDER BY key`;
 export const PRODUCTS_SQL = `${PAID} SELECT json_extract(l.item,'$.id') AS id,
  MAX(json_extract(l.item,'$.name')) AS name,
  SUM(json_extract(l.item,'$.quantity')) AS quantity,
@@ -39,3 +39,11 @@ export const PRODUCTS_SQL = `${PAID} SELECT json_extract(l.item,'$.id') AS id,
  CASE WHEN SUM(CASE WHEN ${VALID_COST} THEN 0 ELSE 1 END)=0 THEN SUM(json_extract(l.item,'$.quantity')*(json_extract(l.item,'$.price')-json_extract(l.item,'$.cost'))) ELSE NULL END AS grossProfit
  FROM line_items l WHERE json_type(l.item,'$.id')='text' AND json_type(l.item,'$.name')='text' AND json_type(l.item,'$.quantity')='integer' AND json_extract(l.item,'$.quantity')>0 AND json_type(l.item,'$.price')='integer' AND json_extract(l.item,'$.price')>=0 GROUP BY json_extract(l.item,'$.id') ORDER BY revenue DESC,quantity DESC,id LIMIT 10`;
 export const UNDATED_SQL = `SELECT COUNT(*) AS count FROM orders WHERE owner_id=? AND payment_collected_at IS NULL AND payment_status IN ('cash_collected','terminal_collected') AND status<>'cancelled'`;
+
+// Active orders survive business-day rollover; only daily totals use the range.
+export const KITCHEN_SUMMARY_SQL = `SELECT
+ COALESCE(SUM(CASE WHEN created_at>=? AND created_at<? THEN 1 ELSE 0 END),0) AS today_count,
+ COALESCE(SUM(CASE WHEN payment_collected_at>=? AND payment_collected_at<? AND payment_status='cash_collected' AND status<>'cancelled' THEN total ELSE 0 END),0) AS cash,
+ COALESCE(SUM(CASE WHEN payment_collected_at>=? AND payment_collected_at<? AND payment_status='terminal_collected' AND status<>'cancelled' THEN total ELSE 0 END),0) AS terminal,
+ COALESCE(SUM(CASE WHEN status NOT IN ('completed','cancelled') THEN 1 ELSE 0 END),0) AS active
+ FROM orders WHERE owner_id=?`;

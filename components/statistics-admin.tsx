@@ -22,7 +22,7 @@ export function StatisticsPanel({period,data,error,loading,onPeriod,onRefresh}:{
     <ErrorNote message={error} onRetry={onRefresh}/>
     {!data&&!error&&<Loading/>}
     {data&&summary&&<div className="statistics-report" aria-busy={loading}>
-      <div className="stat-date"><span>{statisticDate(data.range.start)}{data.range.group!=="hour"&&` — ${statisticDate(data.range.end-1)}`}</span><small>თანხის მიღების თარიღით · თბილისის დრო</small></div>
+      <div className="stat-date"><span>{statisticDate(data.range.start)} · {statisticTime(data.range.start)} — {statisticDate(data.range.end)} · {statisticTime(data.range.end)}</span><small>სამუშაო დღე 04:00–04:00 · თბილისის დრო</small></div>
       {data.undatedPayments>0&&<div className="notice" role="status">{data.undatedPayments} გადახდილ შეკვეთას თანხის მიღების თარიღი არ აქვს შენახული და პერიოდების ჯამებში არ შედის.</div>}
       {summary.missingCostOrders>0&&<div className="notice" role="status">{summary.missingCostOrders} შეკვეთაში თვითღირებულება სრულად არ არის შენახული. ნავაჭრი დათვლილია, სრული თვითღირებულება და მოგება კი უცნობია.</div>}
       <div className="stat-metrics">
@@ -43,12 +43,23 @@ export function StatisticsPanel({period,data,error,loading,onPeriod,onRefresh}:{
         <section className="stat-panel"><h2>შეკვეთის წყარო</h2><dl><div><dt><Globe size={17}/>საიტი</dt><dd>{money(summary.web)}</dd></div><div><dt><Store size={17}/>ადგილზე · სალარო</dt><dd>{money(summary.pos)}</dd></div></dl><p className="stat-footnote">მხოლოდ გადახდილი შეკვეთების ნავაჭრი.</p></section>
       </div>
       <section className="stat-panel"><div className="stat-panel-heading"><div><h2>წამყვანი პროდუქტები</h2><p>პირველი 10 პროდუქტი გაყიდვების თანხის მიხედვით</p></div></div>{data.products.length>0?<div className="stat-table-scroll"><table className="stat-products"><caption className="sr-only">ყველაზე გაყიდვადი პროდუქტები</caption><thead><tr><th>პროდუქტი</th><th>გაიყიდა</th><th>გაყიდვები</th><th>თვითღირებულება</th><th>მოგება</th></tr></thead><tbody>{data.products.map((p,i)=><tr key={p.id}><th scope="row"><span className="stat-rank">{i+1}</span>{p.name}</th><td>{p.quantity} ც.</td><td>{money(p.revenue)}</td><td>{valueMoney(p.cost)}</td><td className={(p.grossProfit??0)<0?"stat-loss":""}>{valueMoney(p.grossProfit)}</td></tr>)}</tbody></table></div>:<p className="muted">გაყიდვის შემდეგ პროდუქტები აქ გამოჩნდება.</p>}</section>
-      <p className="stat-footnote">კვირა იწყება ორშაბათს. გადაუხდელი და გაუქმებული შეკვეთები ნავაჭრში არ ითვლება. ყველა თანხა საცდელი აღრიცხვიდანაა. განახლდა {statisticTime(data.generatedAt)}.</p>
+      <p className="stat-footnote">სამუშაო დღე იწყება 04:00-ზე, კვირა — ორშაბათს 04:00-ზე. თანხები ითვლება მიღების თარიღით. გადაუხდელი და გაუქმებული შეკვეთები ნავაჭრში არ ითვლება. ყველა თანხა საცდელი აღრიცხვიდანაა. განახლდა {statisticTime(data.generatedAt)}.</p>
     </div>}
   </>;
 }
 export default function StatisticsAdmin(){
   const [period,setPeriod]=useState<StatPeriod>("today"),[data,setData]=useState<Statistics|null>(null),[error,setError]=useState(""),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
   useEffect(()=>{const controller=new AbortController();setLoading(true);setError("");void api<Statistics>(`/api/admin/statistics?period=${period}`,{signal:controller.signal}).then(result=>{if(!controller.signal.aborted)setData(result);}).catch(error=>{if(!controller.signal.aborted)setError((error as Error).message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[period,revision]);
+  useEffect(()=>{
+    if(!data)return;
+    // Use the server's time interval so a different client clock cannot change the cutoff.
+    const timer=window.setTimeout(()=>{setData(null);setRevision(value=>value+1);},Math.max(250,data.nextResetAt-data.generatedAt+250));
+    return()=>clearTimeout(timer);
+  },[data]);
+  useEffect(()=>{
+    const refresh=()=>{if(document.visibilityState==="visible"){setData(null);setRevision(value=>value+1);}};
+    window.addEventListener("focus",refresh);document.addEventListener("visibilitychange",refresh);
+    return()=>{window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",refresh);};
+  },[]);
   return <AdminShell active="/admin/statistics"><StatisticsPanel period={period} data={data} error={error} loading={loading} onPeriod={next=>{if(next!==period){setData(null);setError("");setPeriod(next);}}} onRefresh={()=>setRevision(value=>value+1)}/></AdminShell>;
 }
