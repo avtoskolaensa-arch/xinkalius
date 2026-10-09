@@ -1,0 +1,1 @@
+CREATE INDEX `idx_orders_owner_collected` ON `orders` (`owner_id`,`payment_collected_at`);

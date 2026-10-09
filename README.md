@@ -15,6 +15,7 @@ Owner-private, pre-launch ordering prototype for a Batumi khinkali kitchen.
 - Kitchen queue at `/admin`, polling, optional sound, fulfillment and payment states tracked separately.
 - Quick till at `/admin/pos`: optional customer name, cash/terminal records, change, and kitchen submission.
 - Daily order counts plus cash/terminal totals by actual collection timestamp (Asia/Tbilisi).
+- `/admin/statistics`: today, yesterday, Monday-based week, month, year and previous year. Owner-scoped server aggregates include all collected non-cancelled orders, without the kitchen queue limit. Turnover, snapshot product cost/gross profit, average check, units, daily/hourly/monthly chart, payment/channel breakdown and top 10 products. Delivery receipts are separate from product profit; operating expenses are not tracked. Missing historical cost or collection dates are explicitly flagged.
 - Settings: acceptance pause, daily opening hours, preparation/travel estimates, delivery fee/minimum order, contact information.
 - Server-calculated integer-tetri prices; order price and cost snapshots retained. Customer responses redact costs.
 - Idempotent submissions, guarded payment/fulfillment updates, cross-owner isolation, and same-origin writes.
@@ -56,3 +57,5 @@ pnpm build
 Use the managed Sites install/build/preview helpers in its managed environment. Schema changes use appended Drizzle migrations; never alter an applied migration.
 
 Validation for this version: TypeScript; pure pricing/minimum/availability/hours/input checks; independent SQL/migration/idempotency review. The browser checked desktop/mobile rendering and cart/pickup calculations with an isolated fixture. That temporary fixture was removed before build. Authenticated end-to-end production checkout and bank/SMS tests remain pending.
+
+Statistics verification: `node --test tests/statistics.test.mjs` checks actual SQLite migrations and aggregate queries, Tbilisi calendar boundaries, owner/payment filtering, historical costs, unknown legacy costs, negative profit and more than 300 orders. Desktop/mobile UI was checked with an isolated fixture removed before publication.
