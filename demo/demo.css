@@ -1,0 +1,7 @@
+.design-demo-banner { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .65rem; padding: .6rem 1rem; line-height: 1.5; }
+.design-demo-banner strong { white-space: nowrap; }
+.design-demo-banner span { max-width: 850px; }
+.demo-checkout-note { display: grid; gap: .4rem; margin: 0 20px 12px; }
+.checkout-sheet input[readonly], .checkout-sheet textarea[readonly] { background: #f0eee8; cursor: default; opacity: .8; }
+.checkout-sheet button[type="submit"]:disabled { opacity: .7; cursor: not-allowed; }
+@media (max-width: 600px) { .design-demo-banner { font-size: 11px; padding: .5rem .75rem; gap: .15rem; } }

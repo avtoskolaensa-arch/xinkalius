@@ -2,6 +2,12 @@
 
 Owner-private, pre-launch ordering prototype for a Batumi khinkali kitchen.
 
+## Public design demo
+
+The separate GitHub Pages version at https://avtoskolaensa-arch.github.io/xinkalius/ is a public, sign-in-free design preview. It reuses the storefront, approved artwork, fonts, animation and KA/EN/RU copy. Its catalog contains only illustrative sample products. Cart, product details and delivery-zone previews work locally; ordering, payment, personal-information entry and staff access are disabled. It never calls the private app's APIs or reads its database.
+
+Build with `pnpm build:demo`, then `pnpm prepare:pages`. Commit `index.html`, `demo-assets/`, `.nojekyll` and the demo source to GitHub `main`; the repository's existing Pages publishing source is `main` at the root. Rebuild these static files when refreshing the shared preview. The production build and private Site access remain separate.
+
 ## Implemented
 
 - Aqua/cream/red responsive storefront using the approved Georgian wordmark artwork.
