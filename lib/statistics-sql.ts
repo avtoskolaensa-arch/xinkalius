@@ -32,7 +32,7 @@ export const SUMMARY_SQL = `${SALES} SELECT ${METRICS}, COALESCE(SUM(units),0) A
  FROM sales`;
 export const SERIES_SQL = `${SALES} SELECT strftime(?,payment_collected_at/1000,'unixepoch',?) AS key, ${METRICS} FROM sales GROUP BY key ORDER BY key`;
 export const PRODUCTS_SQL = `${PAID} SELECT json_extract(l.item,'$.id') AS id,
- MAX(json_extract(l.item,'$.name')) AS name,
+ MAX(json_extract(l.item,'$.name')) AS name,MAX(json_extract(l.item,'$.translations.en.name')) AS nameEn,MAX(json_extract(l.item,'$.translations.ru.name')) AS nameRu,
  SUM(json_extract(l.item,'$.quantity')) AS quantity,
  SUM(json_extract(l.item,'$.quantity')*json_extract(l.item,'$.price')) AS revenue,
  CASE WHEN SUM(CASE WHEN ${VALID_COST} THEN 0 ELSE 1 END)=0 THEN SUM(json_extract(l.item,'$.quantity')*json_extract(l.item,'$.cost')) ELSE NULL END AS cost,

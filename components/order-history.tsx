@@ -1,9 +1,24 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
-import {Clock,Check,ShoppingBag,RefreshCw} from "lucide-react";
-import {Header,Footer,ErrorNote,Loading} from "./site-shell";
-import {api} from "@/lib/client";
-import {type Order,money,STATUS_LABELS,PAYMENT_LABELS} from "@/lib/menu";
-export default function OrderHistory(){const[orders,setOrders]=useState<Order[]|null>(null),[error,setError]=useState("");const load=useCallback(async()=>{try{const r=await api<{orders:Order[]}>("/api/orders");setOrders(r.orders);setError("");}catch(e){setError((e as Error).message);}},[]);useEffect(()=>{void load();const t=setInterval(()=>void load(),10000);return()=>clearInterval(t);},[load]);
- return <><Header/><main className="shell history-main"><div className="page-heading"><div><p className="eyebrow">შეკვეთები შენახულია</p><h1>ჩემი შეკვეთები</h1><p>გვერდის განახლების შემდეგაც აქ დაგხვდება.</p></div><button className="secondary" onClick={()=>void load()}><RefreshCw size={17}/> განახლება</button></div><ErrorNote message={error} onRetry={()=>void load()}/>{!orders?<Loading/>:orders.length?<div className="history-list">{orders.map(o=>{const steps=["received","cooking","ready",...(o.fulfillment==="delivery"?["delivering"]:[]),"completed"],at=steps.indexOf(o.status);return <article className="history-card" id={o.id} key={o.id}><header><div><span className="eyebrow">{o.fulfillment==="delivery"?"მიტანა":"ადგილზე გატანა"}</span><h2>#{o.id.slice(0,8).toUpperCase()}</h2><p className="small">{new Date(o.created_at).toLocaleString("ka-GE",{timeZone:"Asia/Tbilisi"})}</p></div><span className={`status-pill status-${o.status}`}>{STATUS_LABELS[o.status]}</span></header>{o.status!=="cancelled"&&<div className="tracking-steps">{steps.map((s,i)=><div className={i<=at?"done":""} key={s}><span>{i<at?<Check size={15}/>:i+1}</span><small>{STATUS_LABELS[s]}</small></div>)}</div>}{!["completed","cancelled"].includes(o.status)&&<p className="eta-note"><Clock size={17}/> თავდაპირველი სავარაუდო დრო: {new Date(o.created_at+o.prep_minutes*60000).toLocaleTimeString("ka-GE",{timeZone:"Asia/Tbilisi",hour:"2-digit",minute:"2-digit"})} · დრო შეიძლება შეიცვალოს</p>}<div className="order-lines">{o.items.map(i=><div key={i.id}><span>{i.quantity} × {i.name}</span><strong>{money(i.quantity*i.price)}</strong></div>)}{o.delivery_fee>0&&<div><span>მიტანა</span><span>{money(o.delivery_fee)}</span></div>}</div><footer><span>{PAYMENT_LABELS[o.payment_status]}</span><strong>{money(o.total)}</strong></footer></article>;})}</div>:<div className="empty-state"><ShoppingBag size={42}/><h2>ჯერ შეკვეთა არ გაქვს</h2><p>შენი პირველი ხინკალი გელოდება.</p><a className="primary" href="/#menu">მენიუს ნახვა</a></div>}<p className="small-note">ამ დახურულ დემოში ნაჩვენებია შენი ანგარიშით გაკეთებული ბოლო 100 საცდელი შეკვეთა. SMS-ით აღდგენა მოგვიანებით ჩაირთვება.</p></main><Footer/></>;
+import {itemName,localizedProduct} from "@/lib/i18n-core";
+import {useI18n} from "./language-provider";
+import { useCallback, useEffect, useState } from "react";
+import { Clock, Check, ShoppingBag, RefreshCw } from "lucide-react";
+import { Header, Footer, ErrorNote, Loading } from "./site-shell";
+import { api } from "@/lib/client";
+import { type Order, money, STATUS_LABELS, PAYMENT_LABELS } from "@/lib/menu";
+export default function OrderHistory() {
+    const { t, locale } = useI18n();
+    const [orders, setOrders] = useState<Order[] | null>(null), [error, setError] = useState("");
+    const load = useCallback(async () => { try {
+        const r = await api<{
+            orders: Order[];
+        }>("/api/orders");
+        setOrders(r.orders);
+        setError("");
+    }
+    catch (e) {
+        setError((e as Error).message);
+    } }, []);
+    useEffect(() => { void load(); const t = setInterval(() => void load(), 10000); return () => clearInterval(t); }, [load]);
+    return <><Header /><main className="shell history-main"><div className="page-heading"><div><p className="eyebrow">{t("შეკვეთები შენახულია")}</p><h1>{t("ჩემი შეკვეთები")}</h1><p>{t("გვერდის განახლების შემდეგაც აქ დაგხვდება.")}</p></div><button className="secondary" onClick={() => void load()}><RefreshCw size={17}/>{" " + t("განახლება") + ""}</button></div><ErrorNote message={error} onRetry={() => void load()}/>{!orders ? <Loading /> : orders.length ? <div className="history-list">{orders.map(o => { const steps = ["received", "cooking", "ready", ...(o.fulfillment === "delivery" ? ["delivering"] : []), "completed"], at = steps.indexOf(o.status); return <article className="history-card" id={o.id} key={o.id}><header><div><span className="eyebrow">{o.fulfillment === "delivery" ? t("მიტანა") : t("ადგილზე გატანა")}</span><h2>#{o.id.slice(0, 8).toUpperCase()}</h2><p className="small">{new Date(o.created_at).toLocaleString(locale, { timeZone: "Asia/Tbilisi" })}</p></div><span className={`status-pill status-${o.status}`}>{t(STATUS_LABELS[o.status])}</span></header>{o.status !== "cancelled" && <div className="tracking-steps">{steps.map((s, i) => <div className={i <= at ? "done" : ""} key={s}><span>{i < at ? <Check size={15}/> : i + 1}</span><small>{t(STATUS_LABELS[s])}</small></div>)}</div>}{!["completed", "cancelled"].includes(o.status) && <p className="eta-note"><Clock size={17}/>{" " + t("თავდაპირველი სავარაუდო დრო:") + " "}{new Date(o.created_at + o.prep_minutes * 60000).toLocaleTimeString(locale, { timeZone: "Asia/Tbilisi", hour: "2-digit", minute: "2-digit" })}{" " + t("· დრო შეიძლება შეიცვალოს") + ""}</p>}<div className="order-lines">{o.items.map(i => <div key={i.id}><span>{i.quantity} × {itemName(i,locale)}</span><strong>{money(i.quantity * i.price)}</strong></div>)}{o.delivery_fee > 0 && <div><span>{t("მიტანა")}</span><span>{money(o.delivery_fee)}</span></div>}</div><footer><span>{t(PAYMENT_LABELS[o.payment_status])}</span><strong>{money(o.total)}</strong></footer><a className="secondary" href={`/?reorder=${o.id}#menu`}>{t("ამ შეკვეთის გამეორება")}</a></article>; })}</div> : <div className="empty-state"><ShoppingBag size={42}/><h2>{t("ჯერ შეკვეთა არ გაქვს")}</h2><p>{t("შენი პირველი ხინკალი გელოდება.")}</p><a className="primary" href="/#menu">{t("მენიუს ნახვა")}</a></div>}<p className="small-note">{t("ამ დახურულ დემოში ნაჩვენებია შენი ანგარიშით გაკეთებული ბოლო 100 საცდელი შეკვეთა. SMS-ით აღდგენა მოგვიანებით ჩაირთვება.")}</p></main><Footer /></>;
 }

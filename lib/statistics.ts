@@ -13,7 +13,7 @@ export function statisticSqlOffset(group:StatRange["group"]){return `${(TBILISI_
 const DAY = 24 * 60 * 60 * 1000;
 const MONTHS=["იანვარი","თებერვალი","მარტი","აპრილი","მაისი","ივნისი","ივლისი","აგვისტო","სექტემბერი","ოქტომბერი","ნოემბერი","დეკემბერი"];
 const SHORT_MONTHS=["იან","თებ","მარ","აპრ","მაი","ივნ","ივლ","აგვ","სექ","ოქტ","ნოე","დეკ"];
-export function statisticDate(value:number){const d=new Date(value+TBILISI_OFFSET);return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${d.getUTCFullYear()}`;}
+export function statisticDate(value:number,locale="ka"){if(locale!=="ka")return new Intl.DateTimeFormat(locale,{timeZone:"Asia/Tbilisi",day:"numeric",month:"long",year:"numeric"}).format(value);const d=new Date(value+TBILISI_OFFSET);return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${d.getUTCFullYear()}`;}
 export function statisticTime(value:number){return new Date(value+TBILISI_OFFSET).toISOString().slice(11,16);}
 export function isStatPeriod(value:unknown): value is StatPeriod {return STAT_PERIODS.some(p=>p.id===value);}
 export function statisticRange(period:StatPeriod, now=new Date()):StatRange {
@@ -29,8 +29,8 @@ export function statisticRange(period:StatPeriod, now=new Date()):StatRange {
   return {period,start:start+BUSINESS_DAY_OFFSET-TBILISI_OFFSET,end:end+BUSINESS_DAY_OFFSET-TBILISI_OFFSET,group};
 }
 export type StatPoint={key:string;label:string;fullLabel:string;orders:number;revenue:number;productSales:number;deliveryFees:number;cost:number|null;grossProfit:number|null};
-export type StatSummary=Omit<StatPoint,"key"|"label"|"fullLabel"> & {units:number;averageOrder:number;margin:number|null;cash:number;terminal:number;web:number;pos:number;pickupOrders:number;deliveryOrders:number;missingCostOrders:number};
-export type StatProduct={id:string;name:string;quantity:number;revenue:number;cost:number|null;grossProfit:number|null};
+export type StatSummary=Omit<StatPoint,"key"|"label"|"fullLabel"> & {units:number;averageOrder:number;margin:number|null;cash:number;terminal:number;web:number;pos:number;pickupOrders:number;deliveryOrders:number;missingCostOrders:number;expenses:number;operatingResult:number|null};
+export type StatProduct={id:string;name:string;nameEn?:string;nameRu?:string;quantity:number;revenue:number;cost:number|null;grossProfit:number|null};
 export type Statistics={range:StatRange;summary:StatSummary;points:StatPoint[];products:StatProduct[];undatedPayments:number;generatedAt:number;nextResetAt:number};
 export function statisticBuckets(range:StatRange):StatPoint[] {
   const points:StatPoint[]=[];
@@ -44,3 +44,5 @@ export function statisticBuckets(range:StatRange):StatPoint[] {
   }
   return points;
 }
+
+export function localizedStatPoint(point:StatPoint,group:StatRange["group"],locale:string):StatPoint{if(locale==="ka")return point;const iso=group==="hour"?point.key+":00:00+04:00":group==="day"?point.key+"T04:00:00+04:00":point.key+"-01T04:00:00+04:00";const value=Date.parse(iso);return{...point,label:group==="month"?new Intl.DateTimeFormat(locale,{timeZone:"Asia/Tbilisi",month:"short"}).format(value):point.label,fullLabel:group==="month"?new Intl.DateTimeFormat(locale,{timeZone:"Asia/Tbilisi",month:"long",year:"numeric"}).format(value):statisticDate(value,locale)+(group==="hour"?" · "+statisticTime(value):"")};}

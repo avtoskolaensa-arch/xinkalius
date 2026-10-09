@@ -1,3 +1,4 @@
+import {COLLECT_DRAWER_SQL} from "@/lib/finance";
 import {getDb} from "@/db";
 import {transitions} from "@/lib/order-validation";
 import {currentOwner,apiError,fail,sameOrigin,readBody,publicOrder} from "@/lib/server";
@@ -10,7 +11,9 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
   let result;if(b.action==="collect"){
    if(o.status==="cancelled"||!["cash_due","terminal_due"].includes(String(o.payment_status)))return fail("გადახდის მდგომარეობა უკვე შეიცვალა.",409);
    const cash=o.payment_method==="cash";if(cash&&(!Number.isInteger(b.cashReceived)||b.cashReceived<Number(o.total)||b.cashReceived>10000000))return fail("მიღებული თანხა ჯამზე ნაკლებია ან არასწორია.");
-   result=await db.prepare("UPDATE orders SET payment_status=?,cash_received=?,updated_at=?,payment_collected_at=? WHERE id=? AND owner_id=? AND payment_status=? AND status=?").bind(cash?"cash_collected":"terminal_collected",cash?b.cashReceived:null,Date.now(),Date.now(),id,owner,o.payment_status,o.status).run();
+   const destination=b.cashDestination??"drawer";if(cash&&!["drawer","courier"].includes(destination))return fail("აირჩიე თანხის მდებარეობა.");const now=Date.now();
+   if(cash&&destination==="drawer"){result=await db.prepare(COLLECT_DRAWER_SQL).bind(b.cashReceived,now,now,owner,id,owner,o.status,owner).run();if(!result.meta.changes)return fail("ჯერ გახსენი სალაროს ცვლა ან განაახლე შეკვეთა.",409);}
+   else result=await db.prepare("UPDATE orders SET payment_status=?,cash_received=?,cash_destination=?,updated_at=?,payment_collected_at=? WHERE id=? AND owner_id=? AND payment_status=? AND status=?").bind(cash?"cash_collected":"terminal_collected",cash?b.cashReceived:null,cash?"courier":"terminal",now,now,id,owner,o.payment_status,o.status).run();
   }else if(b.action==="status"){
    if(typeof b.status!=="string"||!transitions[String(o.status)]?.includes(b.status)||(o.fulfillment==="pickup"&&b.status==="delivering")||(o.fulfillment==="delivery"&&o.status==="ready"&&b.status==="completed"))return fail("სტატუსის ცვლილება დაუშვებელია. განაახლე სია.",409);
    if(b.status==="completed"&&!["cash_collected","terminal_collected"].includes(String(o.payment_status)))return fail("დასრულებამდე დაადასტურე თანხის მიღება.",409);

@@ -1,0 +1,8 @@
+"use client";
+import {createContext,useCallback,useContext,useEffect,useMemo,useState} from 'react';
+import type {Locale} from '@/lib/menu';
+import {translate,type Translator} from '@/lib/i18n-core';
+const LanguageContext=createContext<{locale:Locale;setLocale:(locale:Locale)=>void;t:Translator}>({locale:'ka',setLocale:()=>{},t:key=>key});
+export function LanguageProvider({initialLocale,children}:{initialLocale:Locale;children:React.ReactNode}){const[locale,setLanguage]=useState(initialLocale);const setLocale=useCallback((value:Locale)=>{document.cookie=`xinkaliusi-language=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;setLanguage(value);},[]);const t=useCallback<Translator>((key,params)=>translate(key,locale,params),[locale]);useEffect(()=>{document.documentElement.lang=locale;document.body.className=`locale-${locale}`;document.title=translate('ხინკალიუსი — ხინკალი ბათუმში',locale);const description=document.querySelector('meta[name="description"]');description?.setAttribute('content',translate('ხინკალიუსის შეკვეთის საცდელი ვერსია. აირჩიე შენი ხინკალი, გატანა ან მიტანა.',locale));},[locale]);const value=useMemo(()=>({locale,setLocale,t}),[locale,setLocale,t]);return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;}
+export function useI18n(){return useContext(LanguageContext);}
+export function LanguageSwitch(){const{locale,setLocale,t}=useI18n();return <div className="language-switch" role="group" aria-label={t('ენის არჩევა')}>{(['ka','en','ru'] as Locale[]).map(l=><button key={l} type="button" lang={l} aria-pressed={locale===l} onClick={()=>setLocale(l)}>{l.toUpperCase()}</button>)}</div>;}

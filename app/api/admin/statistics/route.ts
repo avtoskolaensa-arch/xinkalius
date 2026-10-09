@@ -1,3 +1,4 @@
+import {operatingResult} from "@/lib/finance";
 import {getDb} from "@/db";
 import {currentOwner,apiError,fail} from "@/lib/server";
 import {isStatPeriod,statisticRange,statisticBuckets,statisticSqlOffset,type StatSummary,type StatPoint,type StatProduct,type Statistics} from "@/lib/statistics";
@@ -10,14 +11,16 @@ export async function GET(request:Request){
   try {
     const now=new Date(),range=statisticRange(period,now),nextResetAt=statisticRange("today",now).end,db=getDb();
     const pattern=range.group==="hour"?"%Y-%m-%dT%H":range.group==="day"?"%Y-%m-%d":"%Y-%m";
-    const [totals,series,products,undated]=await db.batch([
+    const [totals,series,products,undated,expenseRows]=await db.batch([
       db.prepare(SUMMARY_SQL).bind(owner,range.start,range.end),
       db.prepare(SERIES_SQL).bind(owner,range.start,range.end,pattern,statisticSqlOffset(range.group)),
       db.prepare(PRODUCTS_SQL).bind(owner,range.start,range.end),
       db.prepare(UNDATED_SQL).bind(owner),
+      db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM expenses WHERE owner_id=? AND voided_at IS NULL AND paid_at>=? AND paid_at<?").bind(owner,range.start,range.end),
     ]);
     const raw=totals.results[0] as unknown as StatSummary;
-    const summary={...raw,averageOrder:raw.orders?Math.round(raw.revenue/raw.orders):0,margin:raw.grossProfit!==null&&raw.productSales>0?raw.grossProfit/raw.productSales*100:null};
+    const expenses=Number((expenseRows.results[0] as {total:number})?.total||0);
+    const summary={...raw,expenses,operatingResult:operatingResult(raw.revenue,raw.cost,expenses),averageOrder:raw.orders?Math.round(raw.revenue/raw.orders):0,margin:raw.grossProfit!==null&&raw.productSales>0?raw.grossProfit/raw.productSales*100:null};
     const seriesRows=series.results as Array<Partial<StatPoint> & {key:string}>;
     const points=statisticBuckets(range).map(point=>({...point,...seriesRows.find(row=>row.key===point.key)}));
     const undatedCount=undated.results[0] as {count:number}|undefined;
